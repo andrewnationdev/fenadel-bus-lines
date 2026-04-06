@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fenadel Bus Station</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --line-color: #1a237e; /* Azul escuro da linha */
+            --text-main: #e8eaed;
+            --text-sub: #9aa0a6;
+            --accent-blue: #8ab4f8;
+            --border-color: #3c4043;
+        }
+
+        body {
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Header Estilo Bottom Sheet */
+        .header {
+            padding: 8px 16px 0;
+            flex-shrink: 0;
+        }
+
+        .drag-handle {
+            width: 32px;
+            height: 4px;
+            background-color: #5f6368;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+
+        .route-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bus-icon-main {
+            width: 20px;
+            filter: invert(1);
+        }
+
+        .company-tag {
+            background-color: #1a237e;
+            border: 1px solid #3f51b5;
+            color: #d1d9ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .destination-name {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .origin-sub {
+            color: var(--text-sub);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .tabs {
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+        }
+
+        .tab {
+            color: var(--accent-blue);
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+
+        /* Lista de Paradas */
+        .scroll-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .timeline-container {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        /* A Linha Azul Contínua */
+        .main-line {
+            position: absolute;
+            left: 29px; /* Alinhamento central preciso */
+            top: 35px;
+            bottom: 55px;
+            width: 10px;
+            background-color: #0d1b3e;
+            z-index: 1;
+        }
+
+        .stop-row {
+            display: flex;
+            padding: 0 16px 32px 16px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .marker-col {
+            width: 36px;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-right: 16px;
+        }
+
+        /* Ícone redondo branco (Origem/Destino) */
+        .circle-icon {
+            width: 24px;
+            height: 24px;
+            background-color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Ponto intermediário (Pequeno círculo cinza) */
+        .small-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #9aa0a6;
+            border-radius: 50%;
+            margin-top: 8px;
+            border: 2px solid var(--bg-color); /* Cria o efeito de separação da linha */
+        }
+
+        .info-col {
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #303134;
+            padding-bottom: 12px;
+        }
+
+        .stop-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .location-name {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .time-text {
+            font-size: 16px;
+            color: var(--text-main);
+            font-weight: 400;
+        }
+
+        /* Remover borda do último item */
+        .stop-row:last-child .info-col {
+            border-bottom: none;
+        }
+
+        /* Scrollbar customizada */
+        .scroll-area::-webkit-scrollbar { width: 5px; }
+        .scroll-area::-webkit-scrollbar-thumb { background: #3c4043; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <div class="drag-handle"></div>
+        <div class="route-title-row">
+            <div class="title-group">
+                <span></span>
+                <span class="company-tag">BBL International</span>
+                <span class="destination-name">Fenadel</span>
+            </div>
+            <span style="color: var(--text-sub); font-size: 24px;">&times;</span>
+        </div>
+        <div class="origin-sub">de Terminal Rodoviário de Ponta Grossa</div>
+        <div class="tabs">
+            <div class="tab">22:00</div>
+        </div>
+    </div>
+
+    <div class="scroll-area">
+        <div class="timeline-container">
+            <div class="main-line"></div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="circle-icon">🚌</div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Terminal Rodoviário de Ponta Grossa</span>
+                        <span class="status-text">Previsto 👥</span>
+                    </div>
+                    <span class="time-text">22:00</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="small-dot"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Rodoferroviária de Curitiba</span>
+                        <span class="status-text">Previsto 👥</span>
+                    </div>
+                    <span class="time-text">23:59</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="small-dot"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">São Paulo - Barra Funda</span>
+                        <span class="status-text">Previsto (+1 dia) 👥</span>
+                    </div>
+                    <span class="time-text">07:05</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="small-dot"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Rio de Janeiro, RJ - Rodoviária do Rio</span>
+                        <span class="status-text">Previsto (+1 dias) 👥</span>
+                    </div>
+                    <span class="time-text">14:30</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="small-dot"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Terminal Rodoviário de Luwakut</span>
+                        <span class="status-text">Previsto (+5 dias) 👥</span>
+                    </div>
+                    <span class="time-text">09:30</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="small-dot"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Terminal Rodoviário de Arazara</span>
+                        <span class="status-text">Previsto (+5 dias) 👥</span>
+                    </div>
+                    <span class="time-text">21:45</span>
+                </div>
+            </div>
+
+            <div class="stop-row">
+                <div class="marker-col"><div class="circle-icon"></div></div>
+                <div class="info-col">
+                    <div class="stop-text">
+                        <span class="location-name">Terminal Rodoviário de Fenadel</span>
+                        <span class="status-text">Previsto (+6 dias) 👥</span>
+                    </div>
+                    <span class="time-text">06:55</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
