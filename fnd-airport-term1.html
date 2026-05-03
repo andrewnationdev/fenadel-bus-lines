@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>FND Terminal 1 - Departures</title>
+    <style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #050505;
+        }
+
+        .led-glow {
+            text-shadow: 0 0 8px rgba(255, 191, 0, 0.4);
+        }
+
+        .status-delayed {
+            animation: blink 1.5s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.2; }
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.03);
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            from { top: 0; }
+            to { top: 100%; }
+        }
+    </style>
+</head>
+<body class="text-zinc-300 min-h-screen flex flex-col p-4 md:p-8 overflow-x-hidden">
+
+    <div class="scanline"></div>
+
+    <!-- Header Section -->
+    <header class="max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-zinc-800 pb-6 mb-8 gap-4">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="bg-blue-600 text-white px-2 py-1 text-xs font-bold rounded">JFK</div>
+                <h1 class="text-3xl md:text-5xl font-bold tracking-tighter text-white uppercase italic">Departures</h1>
+            </div>
+            <p class="text-zinc-500 text-sm uppercase tracking-widest">Andrew Nation International Airport • Terminal 1</p>
+        </div>
+
+        <div class="text-left md:text-right">
+            <div id="current-time" class="text-4xl md:text-5xl font-bold text-amber-500 led-glow">00:00:00</div>
+            <div id="current-date" class="text-xs uppercase text-zinc-500 mt-1">MAY 03, 2026</div>
+        </div>
+    </header>
+
+    <!-- Board Section -->
+    <main class="max-w-7xl mx-auto w-full flex-grow overflow-hidden border border-zinc-800 rounded-xl bg-zinc-900/30 backdrop-blur-sm shadow-2xl">
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-zinc-800/80 text-zinc-400 text-xs uppercase tracking-tighter text-left">
+                        <th class="py-4 px-6 font-medium">Flight</th>
+                        <th class="py-4 px-6 font-medium">Airline</th>
+                        <th class="py-4 px-6 font-medium">Destination</th>
+                        <th class="py-4 px-6 font-medium">Gate</th>
+                        <th class="py-4 px-6 font-medium text-center">Scheduled</th>
+                        <th class="py-4 px-6 font-medium text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="flight-table-body" class="divide-y divide-zinc-800/50">
+                    <!-- Rows will be injected by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Footer / Legend -->
+    <footer class="max-w-7xl mx-auto w-full mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] uppercase tracking-widest text-zinc-600 border-t border-zinc-900 pt-6">
+        <div class="flex gap-6">
+            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Boarding</span>
+            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Final Call</span>
+            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-600"></span> Delayed</span>
+        </div>
+        <div class="italic text-center md:text-right">
+            Ground Transportation and Baggage Claim: Follow Signs to Level 1
+        </div>
+    </footer>
+
+    <script>
+        const flights = [
+            { id: 'DL 412', airline: 'Delta Air Lines', dest: 'London-LHR', gate: 'B23', time: '18:05', status: 'Boarding', color: 'text-green-500' },
+            { id: 'AA 104', airline: 'American Airlines', dest: 'Paris-CDG', gate: 'C10', time: '18:30', status: 'On Time', color: 'text-zinc-400' },
+            { id: 'B6 2101', airline: 'JetBlue', dest: 'Tokyo-NRT', gate: 'A05', time: '19:00', status: 'Delayed', color: 'text-red-600 status-delayed' },
+            { id: 'AF 007', airline: 'Air France', dest: 'Rio de Janeiro-GIG', gate: 'B12', time: '19:15', status: 'On Time', color: 'text-zinc-400' },
+            { id: 'LH 401', airline: 'Lufthansa', dest: 'Frankfurt-FRA', gate: 'C02', time: '19:45', status: 'Final Call', color: 'text-amber-500' },
+            { id: 'EK 202', airline: 'Emirates', dest: 'Dubai-DXB', gate: 'A18', time: '20:10', status: 'On Time', color: 'text-zinc-400' },
+            { id: 'JJ 8103', airline: 'LATAM Brasil', dest: 'São Paulo-GRU', gate: 'B08', time: '20:45', status: 'On Time', color: 'text-zinc-400' },
+            { id: 'QR 702', airline: 'Qatar Airways', dest: 'Doha-DOH', gate: 'A12', time: '21:00', status: 'On Time', color: 'text-zinc-400' }
+        ];
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            const options = { month: 'long', day: 'numeric', year: 'numeric' };
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options).toUpperCase();
+        }
+
+        function renderFlights() {
+            const tbody = document.getElementById('flight-table-body');
+            tbody.innerHTML = flights.map(f => `
+                <tr class="hover:bg-zinc-800/30 transition-all cursor-default group">
+                    <td class="py-5 px-6 font-bold text-blue-400 group-hover:text-blue-300">${f.id}</td>
+                    <td class="py-5 px-6 text-zinc-400 uppercase text-xs">${f.airline}</td>
+                    <td class="py-5 px-6 text-white font-semibold uppercase tracking-tight">${f.dest}</td>
+                    <td class="py-5 px-6 font-bold text-center text-zinc-300">${f.gate}</td>
+                    <td class="py-5 px-6 text-center text-amber-500 led-glow font-bold">${f.time}</td>
+                    <td class="py-5 px-6 text-right font-bold uppercase ${f.color}">${f.status}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Initialize
+        window.onload = () => {
+            updateClock();
+            renderFlights();
+            setInterval(updateClock, 1000);
+        };
+    </script>
+</body>
+</html>
