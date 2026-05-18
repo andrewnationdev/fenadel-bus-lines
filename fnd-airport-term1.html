@@ -49,10 +49,10 @@
     <header class="max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-zinc-800 pb-6 mb-8 gap-4">
         <div>
             <div class="flex items-center gap-3 mb-2">
-                <div class="bg-blue-600 text-white px-2 py-1 text-xs font-bold rounded">JFK</div>
-                <h1 class="text-3xl md:text-5xl font-bold tracking-tighter text-white uppercase italic">Departures</h1>
+                <div class="bg-blue-600 text-white px-2 py-1 text-xs font-bold rounded">FND</div>
+                <h1 class="text-3xl md:text-5xl font-bold tracking-tighter text-white uppercase italic">EMBARQUES</h1>
             </div>
-            <p class="text-zinc-500 text-sm uppercase tracking-widest">Andrew Nation International Airport • Terminal 1</p>
+            <p class="text-zinc-500 text-sm uppercase tracking-widest">AEROPORTO INTERNACIONAL ANDREW NATION • Terminal 1</p>
         </div>
 
         <div class="text-left md:text-right">
@@ -67,12 +67,12 @@
             <table class="w-full border-collapse">
                 <thead>
                     <tr class="bg-zinc-800/80 text-zinc-400 text-xs uppercase tracking-tighter text-left">
-                        <th class="py-4 px-6 font-medium">Flight</th>
-                        <th class="py-4 px-6 font-medium">Airline</th>
-                        <th class="py-4 px-6 font-medium">Destination</th>
-                        <th class="py-4 px-6 font-medium">Gate</th>
-                        <th class="py-4 px-6 font-medium text-center">Scheduled</th>
-                        <th class="py-4 px-6 font-medium text-right">Status</th>
+                        <th class="py-4 px-6 font-medium">Voo/</th>
+                        <th class="py-4 px-6 font-medium">Companhia/Lei-Ara</th>
+                        <th class="py-4 px-6 font-medium">Destino/</th>
+                        <th class="py-4 px-6 font-medium">Portão/</th>
+                        <th class="py-4 px-6 font-medium text-center">Partida/</th>
+                        <th class="py-4 px-6 font-medium text-right">Estado/</th>
                     </tr>
                 </thead>
                 <tbody id="flight-table-body" class="divide-y divide-zinc-800/50">
@@ -96,6 +96,11 @@
 
     <script>
         const flights = [
+            {id: 'AD 716', airline: 'Air Andricia', dest: 'Porto Lobos-PLB', gate: 'A1', time: '06:30', status: 'Atrasado', color: 'text-red-600 status-delayed'},
+            {id: 'AD 8916', airline: 'Air Andricia', dest: 'Columbia-CMZ', gate: 'A2', time: '12:30', status: 'Pontual', color: 'text-zinc-400'},
+            {id: 'AD 447', airline: 'Air Andricia', dest: 'Ieper-IPX', gate: 'B4', time: '02:20', status: 'Embarque Finalizado', color: 'text-green-500'},
+            {id: 'EJ 336', airline: 'Air Andricia', dest: 'Luwa-Kut-LKT', gate: 'A3', time: '05:50', status: 'Embarcando', color: 'text-green-500'},
+            {id: 'EJ 794', airline: 'Aru-Ej Airlines', dest: 'Luwa-Kut-LKT', gate: 'C6', time: '08:55', status: 'Embarcando', color: 'text-green-500'},
             { id: 'DL 412', airline: 'Delta Air Lines', dest: 'London-LHR', gate: 'B23', time: '18:05', status: 'Boarding', color: 'text-green-500' },
             { id: 'AA 104', airline: 'American Airlines', dest: 'Paris-CDG', gate: 'C10', time: '18:30', status: 'On Time', color: 'text-zinc-400' },
             { id: 'B6 2101', airline: 'JetBlue', dest: 'Tokyo-NRT', gate: 'A05', time: '19:00', status: 'Delayed', color: 'text-red-600 status-delayed' },
