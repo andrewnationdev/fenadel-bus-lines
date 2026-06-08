@@ -531,6 +531,8 @@
         };
 
         const scheduleCache = [];
+        const arrivalCache = [];
+
         rawSchedules.forEach((sch, idx) => {
             const compUpper = sch.company.toUpperCase().trim();
             let mapping = companyPlatformMappings[compUpper];
@@ -549,18 +551,41 @@
             const randomCar = 1000 + (idx * 33) % 9000;
             const chosenPlatform = mapping.platforms[idx % mapping.platforms.length];
 
-            // Critério solicitado pelo usuário: Bloco interestadual tem sufixo "- AN" ou "- PR"
-            const isInterstate = sch.destination.includes("- AN") || sch.destination.includes("- PR");
+            // CORREÇÃO DA REGRA: Linhas com sufixo "- AN" ou "- PR" são as INTERNACIONAIS!
+            // Todas as demais são as intermunicipais/interestaduais do terminal de Fenadel.
+            const isInternational = sch.destination.includes("- AN") || sch.destination.includes("- PR");
+            const isInterstate = !isInternational;
 
             const [h, m] = sch.time.split(":").map(Number);
             const minutesFromMidnight = h * 60 + m;
 
+            // Cache de Partidas
             scheduleCache.push({
                 id: idx,
                 time: sch.time,
                 minutes: minutesFromMidnight,
                 company: sch.company,
                 destination: sch.destination,
+                car: randomCar,
+                gate: mapping.gate,
+                platform: chosenPlatform,
+                tagClass: mapping.tagClass,
+                isInterstate: isInterstate
+            });
+
+            // Cache de Chegadas (Distribuição baseada na volta das mesmas linhas)
+            // Aplica-se um deslocamento temporal (ex: 4 horas e 20 minutos depois) para simular o retorno real
+            const arrivalMinutes = (minutesFromMidnight + 260) % 1440;
+            const arrH = Math.floor(arrivalMinutes / 60);
+            const arrM = arrivalMinutes % 60;
+            const arrivalTimeStr = `${String(arrH).padStart(2, '0')}:${String(arrM).padStart(2, '0')}`;
+
+            arrivalCache.push({
+                id: idx,
+                time: arrivalTimeStr,
+                minutes: arrivalMinutes,
+                company: sch.company,
+                origin: sch.destination, // Utiliza os mesmos destinos fictícios como pontos de origem de retorno
                 car: randomCar,
                 gate: mapping.gate,
                 platform: chosenPlatform,
@@ -885,9 +910,7 @@
             tbodyArrivals.innerHTML = "";
             let countArrivals = 0;
 
-            const originFakes = ["GUAÍRA", "PARANAGUÁ", "JOINVILLE", "FLORIANÓPOLIS", "BELO HORIZONTE", "CURITIBA", "SÃO PAULO", "CAMPO GRANDE", "GOIÂNIA", "PORTO ALEGRE"];
-
-            const sortedArrivals = [...scheduleCache].sort((a, b) => {
+            const sortedArrivals = [...arrivalCache].sort((a, b) => {
                 let diffA = a.minutes - currentTimeMinutes;
                 let diffB = b.minutes - currentTimeMinutes;
                 if (diffA < -30) diffA += 1440;
@@ -895,13 +918,13 @@
                 return diffA - diffB;
             });
 
-            sortedArrivals.forEach((bus, index) => {
+            sortedArrivals.forEach((bus) => {
                 let diff = bus.minutes - currentTimeMinutes;
                 if (diff < -1200) diff += 1440;
                 if (diff > 1200) diff -= 1440;
                 if (diff < -40 || diff > 120) return;
 
-                const originName = originFakes[index % originFakes.length];
+                const originName = bus.origin;
 
                 const matchesSearch = originName.toLowerCase().includes(searchFilter) ||
                                       bus.company.toLowerCase().includes(searchFilter) ||
@@ -922,7 +945,7 @@
 
                 const trHtml = `
                     <tr class="transition duration-150 ${rowBgClass}">
-                        <td class="py-3 px-4 font-bold text-slate-950 dark:text-white">${originName}</td>
+                        <td class="py-3 px-4 font-bold text-slate-950 dark:text-white">${originName.toUpperCase()}</td>
                         <td class="py-3 px-4">
                             <span class="px-2 py-0.5 rounded text-[11px] font-black tracking-wide ${bus.tagClass}">
                                 ${bus.company.toUpperCase()}
