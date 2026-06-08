@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Rodoviário de Fenadel - Painel de Controle</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter & Share Tech Mono para visual de painel digital) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Share Tech Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* URBS specific glow and table row animations */
+        .urbs-row-departure {
+            background-color: #f0fdf4; /* Light green for departures */
+        }
+        .urbs-row-arrival {
+            background-color: #f0f9ff; /* Light blue for arrivals */
+        }
+        .dark .urbs-row-departure {
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+        .dark .urbs-row-arrival {
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        .blink-status {
+            animation: blink 1.2s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300">
+
+    <header class="bg-gradient-to-r from-blue-800 to-indigo-900 text-white shadow-lg border-b border-blue-950 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg text-blue-900 shadow-inner flex items-center justify-center">
+                    <i class="fa-solid fa-bus text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
+                        FENADEL <span class="text-xs bg-cyan-500 text-slate-900 px-2 py-0.5 rounded font-black">URBS</span>
+                    </h1>
+                    <p class="text-xs text-blue-200">Terminal Rodoviário de Fenadel • Monitor de Tráfego</p>
+                </div>
+            </div>
+
+            <!-- Painel de hora do terminal -->
+            <div class="flex items-center space-x-4 bg-slate-900/40 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
+                <div class="text-right">
+                    <span class="text-xs block text-slate-300 uppercase tracking-wider font-semibold">Hora do Terminal</span>
+                    <span id="terminal-clock" class="text-2xl font-mono font-bold text-cyan-400 tracking-wider">11:31:00</span>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <div class="flex flex-col items-center">
+                    <span id="sim-indicator" class="text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded font-bold uppercase blink-status">Tempo Real</span>
+                    <button onclick="syncWithRealTime()" class="mt-1 text-[10px] text-cyan-300 hover:underline">Sincronizar</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-5 mb-6 border border-slate-200 dark:border-slate-800 transition-all">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders text-cyan-600"></i>
+                    <h2 class="text-lg font-bold">Painel de Controle da Simulação</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Tema do Painel:</span>
+                    <button onclick="setTheme('urbs')" id="btn-theme-urbs" class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                        URBS Moderno
+                    </button>
+                    <button onclick="setTheme('cyber')" id="btn-theme-cyber" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                        Cyber Terminal
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                <!-- Controle Deslizante de Tempo -->
+                <div class="col-span-1 md:col-span-6">
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="time-slider" class="text-sm font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fa-regular fa-clock text-blue-500"></i> Ajustar Horário de Teste:
+                        </label>
+                        <span id="slider-time-label" class="text-sm font-mono font-bold text-indigo-600 dark:text-cyan-400">11:31</span>
+                    </div>
+                    <input type="range" id="time-slider" min="0" max="1439" value="691" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-cyan-400">
+                    <div class="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
+                        <span>00:00</span>
+                        <span>06:00</span>
+                        <span>12:00</span>
+                        <span>18:00</span>
+                        <span>23:59</span>
+                    </div>
+                </div>
+
+                <!-- Velocidade da Simulação -->
+                <div class="col-span-1 md:col-span-3">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300 block mb-1">
+                        Velocidade do Tempo:
+                    </label>
+                    <div class="flex rounded-lg shadow-sm">
+                        <button onclick="setSimSpeed(0)" id="speed-btn-0" class="flex-1 py-1 px-2 text-xs font-medium border border-slate-300 dark:border-slate-700 rounded-l-lg bg-blue-500 text-white">
+                            Pausado
+                        </button>
+                        <button onclick="setSimSpeed(1)" id="speed-btn-1" class="flex-1 py-1 px-2 text-xs font-medium border-t border-b border-r border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300">
+                            1m/s
+                        </button>
+                        <button onclick="setSimSpeed(5)" id="speed-btn-5" class="flex-1 py-1 px-2 text-xs font-medium border-t border-b border-r border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300">
+                            5m/s
+                        </button>
+                        <button onclick="setSimSpeed(30)" id="speed-btn-30" class="flex-1 py-1 px-2 text-xs font-medium border-t border-b border-r border-slate-300 dark:border-slate-700 rounded-r-lg bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300">
+                            30m/s
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sistema de anúncios sonoros -->
+                <div class="col-span-1 md:col-span-3 flex flex-col justify-end">
+                    <button onclick="announceNextBus()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-2 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition duration-200">
+                        <i class="fa-solid fa-volume-high"></i>
+                        <span>Anunciar Próxima Partida</span>
+                    </button>
+                    <span class="text-[10px] text-center text-slate-400 mt-1">Usa sintetizador de voz (PT-BR)</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-all">
+            <!-- Abas de Navegação -->
+            <div class="bg-slate-100 dark:bg-slate-800 p-2 flex border-b border-slate-200 dark:border-slate-700">
+                <button onclick="switchTab('departures')" id="tab-departures" class="flex-1 py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition duration-200 bg-white dark:bg-slate-900 shadow-sm text-blue-700 dark:text-cyan-400">
+                    <i class="fa-solid fa-circle-arrow-up text-emerald-500"></i>
+                    Previsões de Partida (Saídas)
+                </button>
+                <button onclick="switchTab('arrivals')" id="tab-arrivals" class="flex-1 py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition duration-200 text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-900/50">
+                    <i class="fa-solid fa-circle-arrow-down text-blue-500"></i>
+                    Previsões de Chegada (Desembarques)
+                </button>
+                <button onclick="switchTab('terminal-map')" id="tab-terminal-map" class="flex-1 py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition duration-200 text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-900/50">
+                    <i class="fa-solid fa-map-location-dot text-amber-500"></i>
+                    Mapa Dinâmico das Plataformas
+                </button>
+            </div>
+
+            <!-- Ferramentas de busca e filtragem rápida -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 w-full sm:w-80">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="applyFilters()" placeholder="Buscar destino, empresa ou portão..." class="bg-transparent border-none outline-none text-xs w-full text-slate-700 dark:text-slate-200 placeholder-slate-400">
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Filtros de Bloco:</span>
+                    <button onclick="setBlockFilter('all')" id="btn-filter-all" class="px-3 py-1 rounded-lg text-xs font-bold transition bg-blue-600 text-white">
+                        Todos os Blocos
+                    </button>
+                    <button onclick="setBlockFilter('interstate')" id="btn-filter-interstate" class="px-3 py-1 rounded-lg text-xs font-bold transition bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300">
+                        Interestadual / Intermunicipal
+                    </button>
+                    <button onclick="setBlockFilter('international')" id="btn-filter-international" class="px-3 py-1 rounded-lg text-xs font-bold transition bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300">
+                        Internacional
+                    </button>
+                </div>
+            </div>
+
+            <!-- Painel de Partidas (Saídas) -->
+            <div id="content-departures" class="p-4 overflow-x-auto">
+                <div class="min-w-full">
+                    <!-- Bloco Interestadual / Intermunicipal (Ex: destinos - AN) -->
+                    <div id="block-interstate-section" class="mb-8">
+                        <div class="bg-slate-100 dark:bg-slate-800/60 px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between border-l-4 border-amber-500">
+                            <span class="font-extrabold text-xs uppercase tracking-widest text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                                <i class="fa-solid fa-map-marked-alt"></i> Bloco Interestadual / Intermunicipal
+                            </span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase" id="count-interstate">0 Linhas</span>
+                        </div>
+                        <table class="w-full text-left border-collapse" id="table-interstate">
+                            <thead>
+                                <tr class="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2">
+                                    <th class="py-3 px-4">Cidade Destino</th>
+                                    <th class="py-3 px-4">Empresa</th>
+                                    <th class="py-3 px-4 text-center">Carro</th>
+                                    <th class="py-3 px-4 text-center">Horário</th>
+                                    <th class="py-3 px-4 text-center">Portão</th>
+                                    <th class="py-3 px-4 text-center">Plataforma</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-interstate" class="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm font-semibold">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bloco Internacional / Outras Rotas -->
+                    <div id="block-international-section">
+                        <div class="bg-slate-100 dark:bg-slate-800/60 px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between border-l-4 border-cyan-500">
+                            <span class="font-extrabold text-xs uppercase tracking-widest text-cyan-700 dark:text-cyan-400 flex items-center gap-2">
+                                <i class="fa-solid fa-globe"></i> Bloco Internacional
+                            </span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase" id="count-international">0 Linhas</span>
+                        </div>
+                        <table class="w-full text-left border-collapse" id="table-international">
+                            <thead>
+                                <tr class="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2">
+                                    <th class="py-3 px-4">Cidade Destino</th>
+                                    <th class="py-3 px-4">Empresa</th>
+                                    <th class="py-3 px-4 text-center">Carro</th>
+                                    <th class="py-3 px-4 text-center">Horário</th>
+                                    <th class="py-3 px-4 text-center">Portão</th>
+                                    <th class="py-3 px-4 text-center">Plataforma</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-international" class="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm font-semibold">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Chegadas (Desembarques) -->
+            <div id="content-arrivals" class="p-4 overflow-x-auto hidden">
+                <div class="min-w-full">
+                    <div class="bg-slate-100 dark:bg-slate-800/60 px-4 py-2.5 rounded-xl mb-4 flex items-center justify-between border-l-4 border-blue-500">
+                        <span class="font-extrabold text-xs uppercase tracking-widest text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-arrow-down"></i> Monitor de Desembarques em Tempo Real
+                        </span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase" id="count-arrivals-label">0 registros</span>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2">
+                                <th class="py-3 px-4">Cidade Origem</th>
+                                <th class="py-3 px-4">Empresa</th>
+                                <th class="py-3 px-4 text-center">Carro / Status</th>
+                                <th class="py-3 px-4 text-center">Horário Previsto</th>
+                                <th class="py-3 px-4 text-center">Plataforma de Desembarque</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-arrivals" class="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm font-semibold">
+                            <!-- Preenchido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Painel de Mapa das Plataformas -->
+            <div id="content-terminal-map" class="p-6 hidden">
+                <div class="mb-6">
+                    <h3 class="text-base font-bold mb-2">Visão Dinâmica das Plataformas do Terminal</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Estado de ocupação em tempo real de cada uma das 37 plataformas de embarque e desembarque do terminal.</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3" id="platforms-grid">
+                    <!-- Cards de plataforma carregados dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-4 py-8 text-center text-xs text-slate-400">
+        <p>© 2026 Urbanização de Fenadel S.A. - URBS. Todos os direitos reservados.</p>
+        <p class="mt-1">Painel moderno otimizado baseado no modelo oficial da Rodoviária de Curitiba.</p>
+    </footer>
+
+    <script>
+        // Dados oficiais de voos e ônibus extraídos do arquivo HTML e estruturados em formato JSON nativo
+        const rawSchedules = [
+            { time: "00:49", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "01:10", company: "Andreas International", destination: "Andrímeda - AN" },
+            { time: "02:15", company: "Royal Express", destination: "Luwa-kut" },
+            { time: "02:35", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "03:30", company: "Royal Express", destination: "Roseira - Jara Kluwas" },
+            { time: "04:30", company: "Rápido LaServine", destination: "LaServine" },
+            { time: "05:05", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "05:10", company: "Fenadelense", destination: "Rara-Tara" },
+            { time: "05:15", company: "Fenadelense", destination: "Ara-Naj" },
+            { time: "05:20", company: "Fenadelense", destination: "Ot-Suwa" },
+            { time: "05:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "05:45", company: "Expresso do Sul", destination: "Juweya-Tara" },
+            { time: "05:46", company: "Expresso do Sul", destination: "Ieper - AN" },
+            { time: "05:50", company: "Vinewood", destination: "Nadel" },
+            { time: "05:55", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "06:00", company: "Expresso Transpen", destination: "Aralek" },
+            { time: "06:00", company: "JA Logística", destination: "LaServine" },
+            { time: "06:10", company: "Rápido Fenadel", destination: "Ara-Vai" },
+            { time: "06:15", company: "Royal Express", destination: "Guadalupe" },
+            { time: "06:20", company: "Vinewood", destination: "Jaramei" },
+            { time: "06:20", company: "Princesse de Fenadel", destination: "Tara-Del" },
+            { time: "06:25", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "06:30", company: "Cometa", destination: "Liderança - AN" },
+            { time: "06:30", company: "Royal Express", destination: "Saya" },
+            { time: "06:32", company: "Rápido LaServine", destination: "Ara-Kuwa" },
+            { time: "06:45", company: "Andreas International", destination: "Piedade - AN" },
+            { time: "06:50", company: "Vinewood", destination: "Nadel" },
+            { time: "07:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "07:01", company: "Expresso Koala", destination: "Luwa-Kut" },
+            { time: "07:01", company: "Expresso Koala", destination: "Pauwa-Pai" },
+            { time: "07:01", company: "Expresso Koala", destination: "Uru-Lei" },
+            { time: "07:10", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "07:15", company: "Andreas International", destination: "Alegria - AN" },
+            { time: "07:20", company: "Satélite Norte", destination: "Najara" },
+            { time: "07:20", company: "Princesse de Fenadel", destination: "Rara-Tara" },
+            { time: "07:30", company: "JA Logística", destination: "Lisse" },
+            { time: "07:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "07:45", company: "Andreas International", destination: "Pontevedra - AN" },
+            { time: "07:46", company: "Estrela do Norte", destination: "Ot-Suwa" },
+            { time: "07:46", company: "Estrela do Norte", destination: "Umu-Bna" },
+            { time: "07:50", company: "Cometa", destination: "Huland - AN" },
+            { time: "08:00", company: "Andreas International", destination: "Porto Feliz - AN" },
+            { time: "08:20", company: "JA Logística", destination: "LaServine" },
+            { time: "08:20", company: "Princesse de Fenadel", destination: "Luwa-Kut" },
+            { time: "08:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "08:30", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "09:00", company: "JA Logística", destination: "Lisse" },
+            { time: "09:00", company: "Princesse de Fenadel", destination: "Tara-Del" },
+            { time: "09:00", company: "Vinewood", destination: "Jaramei" },
+            { time: "09:15", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "09:30", company: "Vinewood", destination: "Magda" },
+            { time: "09:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "10:00", company: "JA Logística", destination: "Lisse" },
+            { time: "10:00", company: "Princesse de Fenadel", destination: "Ara-Vai" },
+            { time: "10:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "10:35", company: "Vinewood", destination: "Nadel" },
+            { time: "11:00", company: "JA Logística", destination: "Lisse" },
+            { time: "11:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "11:40", company: "Princesse de Fenadel", destination: "Porto Lobos, AN" },
+            { time: "11:45", company: "Royal Express", destination: "Guadalupe" },
+            { time: "12:00", company: "JA Logística", destination: "Lisse" },
+            { time: "12:00", company: "Princesse de Fenadel", destination: "Umu-Raj" },
+            { time: "12:10", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "12:15", company: "Vinewood", destination: "Nadel" },
+            { time: "12:20", company: "Princesse de Fenadel", destination: "Rara-Tara" },
+            { time: "12:30", company: "Estrela do Norte", destination: "Ara-Kluwa" },
+            { time: "12:30", company: "Estrela do Norte", destination: "Umu-Raj" },
+            { time: "12:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "12:45", company: "Royal Express", destination: "Ara-Kluwa" },
+            { time: "13:00", company: "Princesse de Fenadel", destination: "Tara-Del" },
+            { time: "13:00", company: "VW International", destination: "Ponta Grossa - PR" },
+            { time: "13:01", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "13:15", company: "Expresso Transpen", destination: "Otsuwa" },
+            { time: "13:30", company: "JA Logística", destination: "Lisse" },
+            { time: "13:30", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "13:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "13:45", company: "VW International", destination: "Ponta Grossa - PR" },
+            { time: "14:00", company: "JA Logística", destination: "Lisse" },
+            { time: "14:00", company: "Princesse de Fenadel", destination: "Umu-Bna" },
+            { time: "14:00", company: "JA Logística", destination: "LaServine" },
+            { time: "14:15", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "14:30", company: "Cometa", destination: "Luwakut" },
+            { time: "14:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "14:40", company: "Princesse de Fenadel", destination: "Rara-Tara" },
+            { time: "14:45", company: "VW International", destination: "Ieper - AN" },
+            { time: "14:50", company: "JA Logística", destination: "LaServine" },
+            { time: "15:05", company: "Vinewood", destination: "Nadel" },
+            { time: "15:15", company: "Fenadelense", destination: "Ot-Suwa" },
+            { time: "15:17", company: "Fenadelense", destination: "Rara-Tara" },
+            { time: "15:20", company: "Princesse de Fenadel", destination: "Uru-Lei" },
+            { time: "15:20", company: "Vinewood", destination: "Jaramei" },
+            { time: "15:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "15:35", company: "JA Logística", destination: "Lisse" },
+            { time: "15:45", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "16:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "16:00", company: "Princesse de Fenadel", destination: "Lra-Tim" },
+            { time: "16:10", company: "Royal Express", destination: "Luwa-kut" },
+            { time: "16:15", company: "Royal Express", destination: "Roseira - Jara Kluwas" },
+            { time: "16:25", company: "Expresso do Sul", destination: "Juweya-Tara" },
+            { time: "16:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "16:45", company: "Cometa", destination: "Redenção - AN" },
+            { time: "16:50", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "16:55", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminal 2" },
+            { time: "17:00", company: "Princesse de Fenadel", destination: "Tara-Del" },
+            { time: "17:00", company: "Vinewood", destination: "Jaramei" },
+            { time: "17:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "17:15", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "17:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "17:45", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminal 1" },
+            { time: "18:00", company: "JA Logística", destination: "Lisse" },
+            { time: "18:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "18:00", company: "Princesse de Fenadel", destination: "Uru-Lei" },
+            { time: "18:15", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "18:15", company: "JA Logística", destination: "Lisse" },
+            { time: "18:17", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminal 2" },
+            { time: "18:20", company: "Princesse de Fenadel", destination: "Porto Lobos" },
+            { time: "18:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "18:45", company: "Vinewood", destination: "Nadel" },
+            { time: "18:45", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "18:47", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminal 1" },
+            { time: "19:00", company: "Vinewood", destination: "Jaramei" },
+            { time: "19:00", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "19:00", company: "Expresso Transpen", destination: "Luwa-kut" },
+            { time: "19:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "19:01", company: "Rápido LaServine", destination: "Ara-Kuwa" },
+            { time: "19:05", company: "JA Logística", destination: "Lisse" },
+            { time: "19:15", company: "Andreas International", destination: "Piedade - AN" },
+            { time: "19:20", company: "Andreas International", destination: "Pontevedra - AN" },
+            { time: "19:20", company: "Princesse de Fenadel", destination: "Tara-Del" },
+            { time: "19:20", company: "Rápido Fenadel", destination: "Ara-Vai" },
+            { time: "19:25", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminal 2" },
+            { time: "19:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "19:41", company: "Expresso Koala", destination: "Luwa-Kut" },
+            { time: "19:41", company: "Expresso Koala", destination: "Pauwa-Pai" },
+            { time: "19:41", company: "Expresso Koala", destination: "Uru-Lei" },
+            { time: "19:45", company: "Expresso Koala", destination: "Luwa-Kut" },
+            { time: "19:45", company: "Expresso Koala", destination: "Pauwa-Pai" },
+            { time: "19:45", company: "Expresso Koala", destination: "Uru-Lei" },
+            { time: "19:45", company: "Estrela do Norte", destination: "Ara-Kluwa" },
+            { time: "19:45", company: "Estrela do Norte", destination: "Umu-Raj" },
+            { time: "19:46", company: "Estrela do Norte", destination: "Ot-Suwa" },
+            { time: "19:46", company: "Estrela do Norte", destination: "Umu-Bna" },
+            { time: "19:59", company: "JA Logística", destination: "LaServine" },
+            { time: "20:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "20:15", company: "Royal Express", destination: "Rosana" },
+            { time: "20:20", company: "JA Logística", destination: "Lisse" },
+            { time: "20:20", company: "Princesse de Fenadel", destination: "Luwa-Kut" },
+            { time: "20:20", company: "Princesse de Fenadel", destination: "Umu-Raj" },
+            { time: "20:30", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "20:30", company: "Andreas International", destination: "Columbia - AN" },
+            { time: "20:36", company: "Expresso do Sul", destination: "Juweya-Tara" },
+            { time: "20:40", company: "Expresso do Sul", destination: "Ara-Kuwa" },
+            { time: "20:40", company: "Princesse de Fenadel", destination: "Lauwa-Pai" },
+            { time: "20:45", company: "Andreas International", destination: "Alegria - AN" },
+            { time: "20:55", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "21:00", company: "Vinewood", destination: "Magda" },
+            { time: "21:00", company: "Princesse de Fenadel", destination: "Kluwa-Bna" },
+            { time: "21:15", company: "Andreas International", destination: "Porto Feliz - AN" },
+            { time: "21:20", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "21:21", company: "Fenadelense", destination: "Ara-Naj" },
+            { time: "21:30", company: "JA Logística", destination: "Lisse" },
+            { time: "21:40", company: "Princesse de Fenadel", destination: "Ara-Vai" },
+            { time: "21:40", company: "Fenadelense", destination: "Ot-Suwa" },
+            { time: "21:41", company: "Rápido Fenadel", destination: "Ara-Vai" },
+            { time: "21:45", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "21:45", company: "Andreas International", destination: "Porto Lobos - AN" },
+            { time: "21:45", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "21:46", company: "Estrela do Norte", destination: "Ara-Kluwa" },
+            { time: "21:46", company: "Estrela do Norte", destination: "Umu-Raj" },
+            { time: "22:00", company: "Vinewood", destination: "Jaramei" },
+            { time: "22:00", company: "Princesse de Fenadel", destination: "Rara-Tara" },
+            { time: "22:00", company: "Fenadelense", destination: "Rara-Tara" },
+            { time: "22:00", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "22:00", company: "Rápido LaServine", destination: "LaServine" },
+            { time: "22:01", company: "Fenadelense", destination: "Columbia - AN" },
+            { time: "22:05", company: "JA Logística", destination: "LaServine" },
+            { time: "22:10", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "22:15", company: "Satélite Norte", destination: "Umukut" },
+            { time: "22:15", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "22:17", company: "Satélite Norte", destination: "Arazara" },
+            { time: "22:20", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "22:23", company: "Satélite Norte", destination: "Najara" },
+            { time: "22:25", company: "Royal Express", destination: "Guadalupe" },
+            { time: "22:30", company: "Royal Express", destination: "Tara-def" },
+            { time: "22:35", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "22:40", company: "JA Logística", destination: "Lisse" },
+            { time: "22:45", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "22:45", company: "Andreas International", destination: "Porto Lobos - AN" },
+            { time: "23:00", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "23:10", company: "Royal Express", destination: "Luwa-kut" },
+            { time: "23:10", company: "Andreas International", destination: "Ieper - AN" },
+            { time: "23:15", company: "Royal Express", destination: "Saya" },
+            { time: "23:25", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "23:30", company: "Cometa", destination: "Columbia - AN" },
+            { time: "23:45", company: "Royal Express", destination: "Raj-Umu" },
+            { time: "23:59", company: "Fenadel Bus Service", destination: "Aeroporto Intl. de Fenadel - Terminais 1 e 2" },
+            { time: "23:59", company: "Fenadelense", destination: "Luwa-Kut" },
+            { time: "23:59", company: "Fenadelense", destination: "Ara-Naj" },
+            { time: "23:59", company: "Expresso do Sul", destination: "Ponta Grossa - AN" },
+            { time: "23:59", company: "Vinewood", destination: "Nadel" }
+        ];
+
+        // Mapeamentos oficiais das plataformas por empresa (conforme documento em anexo)
+        const companyPlatformMappings = {
+            "FENADELENSE": { gate: "A", platforms: [1, 2, 3], tagClass: "bg-red-600 text-white" },
+            "ROYAL EXPRESS": { gate: "B", platforms: [4, 5], tagClass: "bg-purple-900 text-white" },
+            "VINEWOOD": { gate: "C", platforms: [6, 7], tagClass: "bg-emerald-600 text-white" },
+            "EXPRESSO TRANSPEN": { gate: "D", platforms: [8], tagClass: "bg-neutral-950 text-white border border-neutral-700" },
+            "SATÉLITE NORTE": { gate: "E", platforms: [9, 10, 11], tagClass: "bg-slate-200 text-slate-900 border border-slate-300" },
+            "COMETA": { gate: "F", platforms: [12, 34], tagClass: "bg-rose-500 text-white" },
+            "EXPRESSO DO SUL": { gate: "G", platforms: [13, 14, 36], tagClass: "bg-indigo-600 text-white" },
+            "RÁPIDO FENADEL": { gate: "H", platforms: [15, 29], tagClass: "bg-amber-600 text-slate-950" },
+            "EXPRESSO KOALA": { gate: "I", platforms: [16, 17], tagClass: "bg-orange-500 text-white" },
+            "PRINCESSE DE FENADEL": { gate: "J", platforms: [18, 21, 37], tagClass: "bg-blue-600 text-white" },
+            "ESTRELA DO NORTE": { gate: "K", platforms: [19, 20], tagClass: "bg-pink-600 text-white" },
+            "RÁPIDO LASERVINE": { gate: "M", platforms: [22, 30], tagClass: "bg-cyan-600 text-white" },
+            "FENADEL BUS SERVICE": { gate: "N", platforms: [23, 24, 25], tagClass: "bg-red-500 text-white" },
+            "JA LOGÍSTICA": { gate: "O", platforms: [26, 27, 28], tagClass: "bg-emerald-800 text-white" },
+            "ANDREAS INTERNATIONAL": { gate: "S", platforms: [32, 33], tagClass: "bg-orange-600 text-white" },
+            "VW INTERNATIONAL": { gate: "U", platforms: [35], tagClass: "bg-emerald-500 text-white" }
+        };
+
+        const scheduleCache = [];
+        rawSchedules.forEach((sch, idx) => {
+            const compUpper = sch.company.toUpperCase().trim();
+            let mapping = companyPlatformMappings[compUpper];
+            if (!mapping) {
+                // Fallbacks para nomes ligeiramente diferentes
+                if (compUpper.includes("LASERVINE")) mapping = companyPlatformMappings["RÁPIDO LASERVINE"];
+                else if (compUpper.includes("JA LOG")) mapping = companyPlatformMappings["JA LOGÍSTICA"];
+                else if (compUpper.includes("SATELLITE") || compUpper.includes("SATÉLITE")) mapping = companyPlatformMappings["SATÉLITE NORTE"];
+                else if (compUpper.includes("FENADEL BUS")) mapping = companyPlatformMappings["FENADEL BUS SERVICE"];
+                else if (compUpper.includes("KOALA")) mapping = companyPlatformMappings["EXPRESSO KOALA"];
+                else if (compUpper.includes("PRINCESSE")) mapping = companyPlatformMappings["PRINCESSE DE FENADEL"];
+                else mapping = { gate: "R", platforms: [31], tagClass: "bg-slate-400 text-white" };
+            }
+
+            // Geração determinística de número de carro com base no index para ser fixo por rota
+            const randomCar = 1000 + (idx * 33) % 9000;
+            const chosenPlatform = mapping.platforms[idx % mapping.platforms.length];
+
+            // Critério solicitado pelo usuário: Bloco interestadual tem sufixo "- AN" ou "- PR"
+            const isInterstate = sch.destination.includes("- AN") || sch.destination.includes("- PR");
+
+            const [h, m] = sch.time.split(":").map(Number);
+            const minutesFromMidnight = h * 60 + m;
+
+            scheduleCache.push({
+                id: idx,
+                time: sch.time,
+                minutes: minutesFromMidnight,
+                company: sch.company,
+                destination: sch.destination,
+                car: randomCar,
+                gate: mapping.gate,
+                platform: chosenPlatform,
+                tagClass: mapping.tagClass,
+                isInterstate: isInterstate
+            });
+        });
+
+        // Configurações de estado global do sistema
+        let currentTimeMinutes = 691; // Inicializa às 11:31
+        let simSpeed = 0; // Pausado por padrão
+        let activeTab = "departures";
+        let activeTheme = "urbs";
+        let blockFilter = "all";
+        let searchFilter = "";
+        let timerInterval = null;
+
+        function bootstrapApp() {
+            setTheme('urbs');
+            updateTerminalTimeDisplay();
+            renderBoards();
+            setupEventListeners();
+            startTimer();
+        }
+
+        // Executa imediatamente se o documento já estiver pronto, caso contrário adiciona o listener
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            bootstrapApp();
+        } else {
+            window.addEventListener("DOMContentLoaded", bootstrapApp);
+        }
+
+        function setupEventListeners() {
+            const slider = document.getElementById("time-slider");
+            if (slider) {
+                slider.addEventListener("input", function() {
+                    currentTimeMinutes = parseInt(this.value);
+                    const simIndicator = document.getElementById("sim-indicator");
+                    if (simIndicator) {
+                        simIndicator.innerText = "Simulador";
+                        simIndicator.className = "text-[10px] bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-bold uppercase blink-status";
+                    }
+                    updateTerminalTimeDisplay();
+                    renderBoards();
+                });
+            }
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (simSpeed > 0) {
+                    currentTimeMinutes = (currentTimeMinutes + simSpeed) % 1440;
+                    const slider = document.getElementById("time-slider");
+                    if (slider) slider.value = currentTimeMinutes;
+                    updateTerminalTimeDisplay();
+                    renderBoards();
+                } else if (simSpeed === -1) {
+                    const now = new Date();
+                    currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+                    const slider = document.getElementById("time-slider");
+                    if (slider) slider.value = currentTimeMinutes;
+                    updateTerminalTimeDisplay();
+                    renderBoards();
+                }
+            }, 1000);
+        }
+
+        function setSimSpeed(speed) {
+            simSpeed = speed;
+            const speeds = [0, 1, 5, 30];
+            speeds.forEach(s => {
+                const btn = document.getElementById(`speed-btn-${s}`);
+                if (btn) {
+                    if (s === speed) {
+                        btn.className = "flex-1 py-1 px-2 text-xs font-medium border border-slate-300 dark:border-slate-700 bg-blue-600 text-white";
+                    } else {
+                        btn.className = "flex-1 py-1 px-2 text-xs font-medium border-t border-b border-r border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300";
+                    }
+                }
+            });
+            const indicator = document.getElementById("sim-indicator");
+            if (indicator) {
+                indicator.innerText = speed > 0 ? `Sim speed: ${speed}x` : "Pausado";
+                indicator.className = "text-[10px] bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-bold uppercase blink-status";
+            }
+        }
+
+        function syncWithRealTime() {
+            simSpeed = -1; // Flag especial para sincronização direta com o relógio
+            const speeds = [0, 1, 5, 30];
+            speeds.forEach(s => {
+                const btn = document.getElementById(`speed-btn-${s}`);
+                if (btn) btn.className = "flex-1 py-1 px-2 text-xs font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300";
+            });
+            const indicator = document.getElementById("sim-indicator");
+            if (indicator) {
+                indicator.innerText = "Tempo Real";
+                indicator.className = "text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded font-bold uppercase blink-status";
+            }
+            startTimer();
+        }
+
+        function minutesToTimeString(totalMinutes) {
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function updateTerminalTimeDisplay() {
+            let displayMinutes = currentTimeMinutes;
+            let secondsStr = ":00";
+            if (simSpeed === -1) {
+                const now = new Date();
+                displayMinutes = now.getHours() * 60 + now.getMinutes();
+                secondsStr = ":" + String(now.getSeconds()).padStart(2, '0');
+            }
+            const timeStr = minutesToTimeString(displayMinutes);
+            const clock = document.getElementById("terminal-clock");
+            const label = document.getElementById("slider-time-label");
+            if (clock) clock.innerText = timeStr + secondsStr;
+            if (label) label.innerText = timeStr;
+        }
+
+        function setBlockFilter(block) {
+            blockFilter = block;
+            const filters = ["all", "interstate", "international"];
+            filters.forEach(f => {
+                const btn = document.getElementById(`btn-filter-${f}`);
+                if (btn) {
+                    if (f === block) {
+                        btn.className = "px-3 py-1 rounded-lg text-xs font-bold transition bg-blue-600 text-white";
+                    } else {
+                        btn.className = "px-3 py-1 rounded-lg text-xs font-bold transition bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300";
+                    }
+                }
+            });
+            renderBoards();
+        }
+
+        function applyFilters() {
+            const searchInput = document.getElementById("search-input");
+            if (searchInput) {
+                searchFilter = searchInput.value.toLowerCase().trim();
+            }
+            renderBoards();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            const tabs = ["departures", "arrivals", "terminal-map"];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const content = document.getElementById(`content-${t}`);
+                if (btn && content) {
+                    if (t === tab) {
+                        btn.className = "flex-1 py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition duration-200 bg-white dark:bg-slate-900 shadow-sm text-blue-700 dark:text-cyan-400";
+                        content.classList.remove("hidden");
+                    } else {
+                        btn.className = "flex-1 py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition duration-200 text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-900/50";
+                        content.classList.add("hidden");
+                    }
+                }
+            });
+            renderBoards();
+        }
+
+        function setTheme(theme) {
+            activeTheme = theme;
+            const btnUrbs = document.getElementById("btn-theme-urbs");
+            const btnCyber = document.getElementById("btn-theme-cyber");
+            const htmlElement = document.documentElement;
+
+            if (theme === 'urbs') {
+                htmlElement.classList.remove('dark');
+                if (btnUrbs) btnUrbs.className = "px-3 py-1 rounded-full text-xs font-bold bg-blue-600 text-white shadow-sm border border-blue-700";
+                if (btnCyber) btnCyber.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700 border border-slate-300";
+            } else {
+                htmlElement.classList.add('dark');
+                if (btnCyber) btnCyber.className = "px-3 py-1 rounded-full text-xs font-bold bg-cyan-500 text-slate-950 shadow-sm border border-cyan-400";
+                if (btnUrbs) btnUrbs.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+            }
+            renderBoards();
+        }
+
+        function renderBoards() {
+            if (activeTab === "departures") {
+                renderDepartures();
+            } else if (activeTab === "arrivals") {
+                renderArrivals();
+            } else if (activeTab === "terminal-map") {
+                renderTerminalMap();
+            }
+        }
+
+        function getDepartureStatus(busMinutes, currentMinutes) {
+            const diff = busMinutes - currentMinutes;
+            let adjustedDiff = diff;
+            if (adjustedDiff < -1200) adjustedDiff += 1440;
+            if (adjustedDiff > 1200) adjustedDiff -= 1440;
+
+            if (adjustedDiff < -10) {
+                return { label: "Viagem Iniciada", class: "text-slate-400 dark:text-slate-600 font-normal", showCar: false };
+            } else if (adjustedDiff <= 0 && adjustedDiff >= -10) {
+                return { label: "Partiu há " + Math.abs(adjustedDiff) + " min", class: "text-slate-500 font-bold", showCar: true };
+            } else if (adjustedDiff <= 5 && adjustedDiff > 0) {
+                return { label: "Embarque Imediato", class: "text-red-600 dark:text-red-400 font-bold blink-status uppercase", showCar: true };
+            } else if (adjustedDiff <= 15 && adjustedDiff > 5) {
+                return { label: "Chamada para Embarque", class: "text-amber-500 font-bold uppercase", showCar: true };
+            } else if (adjustedDiff <= 30 && adjustedDiff > 15) {
+                return { label: "Carro na Plataforma", class: "text-emerald-600 dark:text-emerald-400 font-medium", showCar: true };
+            } else {
+                return { label: "Previsão de chegada", class: "text-blue-500 font-normal italic", showCar: false };
+            }
+        }
+
+        function renderDepartures() {
+            const tbodyInterstate = document.getElementById("tbody-interstate");
+            const tbodyInternational = document.getElementById("tbody-international");
+            
+            if (!tbodyInterstate || !tbodyInternational) return;
+            
+            tbodyInterstate.innerHTML = "";
+            tbodyInternational.innerHTML = "";
+
+            let countInterstate = 0;
+            let countInternational = 0;
+
+            const sortedSchedules = [...scheduleCache].sort((a, b) => {
+                let diffA = a.minutes - currentTimeMinutes;
+                let diffB = b.minutes - currentTimeMinutes;
+                if (diffA < -10) diffA += 1440;
+                if (diffB < -10) diffB += 1440;
+                return diffA - diffB;
+            });
+
+            sortedSchedules.forEach(bus => {
+                const matchesSearch = bus.destination.toLowerCase().includes(searchFilter) ||
+                                      bus.company.toLowerCase().includes(searchFilter) ||
+                                      bus.gate.toLowerCase().includes(searchFilter) ||
+                                      bus.platform.toString().includes(searchFilter);
+                if (!matchesSearch) return;
+
+                if (blockFilter === "interstate" && !bus.isInterstate) return;
+                if (blockFilter === "international" && bus.isInterstate) return;
+
+                const status = getDepartureStatus(bus.minutes, currentTimeMinutes);
+                
+                let diff = bus.minutes - currentTimeMinutes;
+                if (diff < -1200) diff += 1440;
+                if (diff > 1200) diff -= 1440;
+                if (diff < -15) return; // Limpa ônibus que já saíram há mais de 15 minutos
+
+                const carDisplay = status.showCar ? bus.car : `<span class="text-xs text-slate-400 dark:text-slate-600">${status.label}</span>`;
+                
+                let rowBgClass = "";
+                if (activeTheme === "urbs") {
+                    rowBgClass = bus.isInterstate ? "urbs-row-arrival hover:bg-blue-100/70" : "urbs-row-departure hover:bg-green-100/70";
+                } else {
+                    rowBgClass = "hover:bg-slate-800/40";
+                }
+
+                const trHtml = `
+                    <tr class="transition duration-150 ${rowBgClass}">
+                        <td class="py-3 px-4 font-bold text-slate-950 dark:text-white">${bus.destination.toUpperCase()}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-black tracking-wide ${bus.tagClass}">
+                                ${bus.company.toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center font-mono font-bold">${carDisplay}</td>
+                        <td class="py-3 px-4 text-center font-mono text-base font-bold text-slate-700 dark:text-cyan-400">${bus.time}</td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-600 dark:text-slate-400">${bus.gate}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block bg-slate-900 text-emerald-400 dark:bg-slate-800 border border-emerald-500/20 font-mono font-bold px-2 py-0.5 rounded text-sm min-w-[24px]">
+                                ${bus.platform}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+
+                if (bus.isInterstate) {
+                    tbodyInterstate.innerHTML += trHtml;
+                    countInterstate++;
+                } else {
+                    tbodyInternational.innerHTML += trHtml;
+                    countInternational++;
+                }
+            });
+
+            const lblInterstate = document.getElementById("count-interstate");
+            const lblInternational = document.getElementById("count-international");
+            if (lblInterstate) lblInterstate.innerText = `${countInterstate} Linhas Encontradas`;
+            if (lblInternational) lblInternational.innerText = `${countInternational} Linhas Encontradas`;
+
+            const sectInterstate = document.getElementById("block-interstate-section");
+            const sectInternational = document.getElementById("block-international-section");
+            if (sectInterstate) sectInterstate.style.display = blockFilter === "international" ? "none" : "block";
+            if (sectInternational) sectInternational.style.display = blockFilter === "interstate" ? "none" : "block";
+        }
+
+        function getArrivalStatus(busMinutes, currentMinutes) {
+            const diff = busMinutes - currentMinutes;
+            let adjustedDiff = diff;
+            if (adjustedDiff < -1200) adjustedDiff += 1440;
+            if (adjustedDiff > 1200) adjustedDiff -= 1440;
+
+            if (adjustedDiff < -25) {
+                return { label: "Desembarque realizado", class: "text-slate-400 dark:text-slate-600 font-normal" };
+            } else if (adjustedDiff < 0 && adjustedDiff >= -25) {
+                return { label: "Desembarcando carro " + (1000 + (Math.abs(busMinutes) * 7) % 9000), class: "text-blue-600 dark:text-cyan-400 font-black blink-status uppercase" };
+            } else if (adjustedDiff <= 10 && adjustedDiff >= 0) {
+                return { label: "Aproximação terminal", class: "text-amber-500 font-bold uppercase" };
+            } else {
+                return { label: "Em viagem (Previsão: " + minutesToTimeString(busMinutes) + ")", class: "text-slate-500 font-normal italic" };
+            }
+        }
+
+        function renderArrivals() {
+            const tbodyArrivals = document.getElementById("tbody-arrivals");
+            if (!tbodyArrivals) return;
+            tbodyArrivals.innerHTML = "";
+            let countArrivals = 0;
+
+            const originFakes = ["GUAÍRA", "PARANAGUÁ", "JOINVILLE", "FLORIANÓPOLIS", "BELO HORIZONTE", "CURITIBA", "SÃO PAULO", "CAMPO GRANDE", "GOIÂNIA", "PORTO ALEGRE"];
+
+            const sortedArrivals = [...scheduleCache].sort((a, b) => {
+                let diffA = a.minutes - currentTimeMinutes;
+                let diffB = b.minutes - currentTimeMinutes;
+                if (diffA < -30) diffA += 1440;
+                if (diffB < -30) diffB += 1440;
+                return diffA - diffB;
+            });
+
+            sortedArrivals.forEach((bus, index) => {
+                let diff = bus.minutes - currentTimeMinutes;
+                if (diff < -1200) diff += 1440;
+                if (diff > 1200) diff -= 1440;
+                if (diff < -40 || diff > 120) return;
+
+                const originName = originFakes[index % originFakes.length];
+
+                const matchesSearch = originName.toLowerCase().includes(searchFilter) ||
+                                      bus.company.toLowerCase().includes(searchFilter) ||
+                                      bus.platform.toString().includes(searchFilter);
+                if (!matchesSearch) return;
+
+                if (blockFilter === "interstate" && !bus.isInterstate) return;
+                if (blockFilter === "international" && bus.isInterstate) return;
+
+                const status = getArrivalStatus(bus.minutes, currentTimeMinutes);
+                
+                let rowBgClass = "";
+                if (activeTheme === "urbs") {
+                    rowBgClass = "urbs-row-arrival hover:bg-blue-100/70";
+                } else {
+                    rowBgClass = "hover:bg-slate-800/40";
+                }
+
+                const trHtml = `
+                    <tr class="transition duration-150 ${rowBgClass}">
+                        <td class="py-3 px-4 font-bold text-slate-950 dark:text-white">${originName}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-black tracking-wide ${bus.tagClass}">
+                                ${bus.company.toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center font-mono font-bold ${status.class}">${status.label}</td>
+                        <td class="py-3 px-4 text-center font-mono text-base font-bold text-slate-700 dark:text-cyan-400">${bus.time}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block bg-slate-900 text-blue-400 dark:bg-slate-800 border border-blue-500/20 font-mono font-bold px-2 py-0.5 rounded text-sm min-w-[24px]">
+                                Plataforma ${bus.platform}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+
+                tbodyArrivals.innerHTML += trHtml;
+                countArrivals++;
+            });
+
+            const lblArrivals = document.getElementById("count-arrivals-label");
+            if (lblArrivals) lblArrivals.innerText = `${countArrivals} Desembarques no Monitor`;
+        }
+
+        function renderTerminalMap() {
+            const grid = document.getElementById("platforms-grid");
+            if (!grid) return;
+            grid.innerHTML = "";
+
+            for (let pNum = 1; pNum <= 37; pNum++) {
+                const activeBus = scheduleCache.find(bus => {
+                    const diff = bus.minutes - currentTimeMinutes;
+                    return bus.platform === pNum && diff >= -10 && diff <= 30;
+                });
+
+                let borderClass = "border-slate-200 dark:border-slate-800";
+                let bgClass = "bg-slate-50 dark:bg-slate-900/30";
+                let statusDot = "bg-slate-300 dark:bg-slate-700";
+                let busInfoHtml = "<span class='text-[10px] text-slate-400'>LIVRE</span>";
+
+                if (activeBus) {
+                    const diff = activeBus.minutes - currentTimeMinutes;
+                    if (diff <= 5 && diff >= -10) {
+                        borderClass = "border-red-500 dark:border-red-500 shadow-sm shadow-red-500/10";
+                        bgClass = "bg-red-50 dark:bg-red-950/20";
+                        statusDot = "bg-red-500 animate-pulse";
+                    } else if (diff <= 15) {
+                        borderClass = "border-amber-500 dark:border-amber-500 shadow-sm shadow-amber-500/10";
+                        bgClass = "bg-amber-50 dark:bg-amber-950/20";
+                        statusDot = "bg-amber-500 animate-pulse";
+                    } else {
+                        borderClass = "border-emerald-500 dark:border-emerald-500 shadow-sm shadow-emerald-500/10";
+                        bgClass = "bg-emerald-50 dark:bg-emerald-950/20";
+                        statusDot = "bg-emerald-500";
+                    }
+
+                    busInfoHtml = `
+                        <div class="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate mt-1">
+                            ${activeBus.destination.toUpperCase()}
+                        </div>
+                        <div class="text-[9px] text-slate-400 mt-0.5 truncate">
+                            Carro: <span class="font-mono font-bold">${activeBus.car}</span>
+                        </div>
+                    `;
+                }
+
+                const cardHtml = `
+                    <div class="p-3 border rounded-2xl flex flex-col justify-between min-h-[95px] ${borderClass} ${bgClass} transition duration-200">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-mono font-bold text-slate-400 dark:text-slate-500">PLAT. ${pNum}</span>
+                            <span class="h-2 w-2 rounded-full ${statusDot}"></span>
+                        </div>
+                        <div>
+                            ${busInfoHtml}
+                        </div>
+                    </div>
+                `;
+
+                grid.innerHTML += cardHtml;
+            }
+        }
+
+        function announceNextBus() {
+            const upcomingBuses = scheduleCache.filter(bus => {
+                const diff = bus.minutes - currentTimeMinutes;
+                return diff > 0 && diff <= 30;
+            }).sort((a, b) => a.minutes - b.minutes);
+
+            if (upcomingBuses.length === 0) {
+                showToast("Nenhum ônibus em processo de embarque para o horário atual.");
+                return;
+            }
+
+            const targetBus = upcomingBuses[0];
+
+            playTerminalChime();
+
+            setTimeout(() => {
+                if ('speechSynthesis' in window) {
+                    const cleanDest = targetBus.destination.replace("- AN", "").replace("- PR", "").trim();
+                    const textToSpeak = `Atenção senhores passageiros. Ônibus da empresa ${targetBus.company}, destino ${cleanDest}, carro número ${targetBus.car}, está pronto para embarque no portão ${targetBus.gate}, plataforma ${targetBus.platform}. Repetindo, embarque imediato para ${cleanDest}. Obrigado.`;
+                    
+                    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                    utterance.lang = 'pt-BR';
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1.0;
+
+                    const voices = window.speechSynthesis.getVoices();
+                    const brVoice = voices.find(voice => voice.lang.includes('pt-BR'));
+                    if (brVoice) {
+                        utterance.voice = brVoice;
+                    }
+
+                    window.speechSynthesis.speak(utterance);
+                    showToast(`🎙️ Anunciando: ${cleanDest} - Plataforma ${targetBus.platform}`);
+                } else {
+                    showToast("Áudio reproduzido com sucesso! Seu navegador não suporta voz, mas emitiu o gongo.");
+                }
+            }, 1000);
+        }
+
+        function playTerminalChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioCtx.currentTime;
+
+                function playTone(freq, start, duration) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, start);
+
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.12, start + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+
+                    osc.start(start);
+                    osc.stop(start + duration);
+                }
+
+                // Gongo clássico de aeroportos/terminais (Tons G4 -> C5 -> E5)
+                playTone(392.00, now, 0.4);       // G4
+                playTone(523.25, now + 0.35, 0.4); // C5
+                playTone(659.25, now + 0.70, 0.6); // E5
+            } catch (e) {
+                console.error("Audio Context bloqueado ou não suportado.", e);
+            }
+        }
+
+        function showToast(message) {
+            let toast = document.getElementById("custom-toast");
+            if (!toast) {
+                toast = document.createElement("div");
+                toast.id = "custom-toast";
+                toast.className = "fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-semibold py-3 px-5 rounded-2xl shadow-xl border border-slate-700 transition duration-300 transform translate-y-10 opacity-0 flex items-center gap-2";
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-blue-400"></i> ${message}`;
+            toast.classList.remove("translate-y-10", "opacity-0");
+            
+            setTimeout(() => {
+                toast.classList.add("translate-y-10", "opacity-0");
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
